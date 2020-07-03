@@ -3,32 +3,20 @@ const { v1: uuidv1 } = require('uuid');
 //uuid package allow to create id
 const { validationResult } = require('express-validator');
 
+const mongoose = require('mongoose');
 const HttpError = require('../models/http-error');
 const getCoordsForAddress = require('../util/location');
 const Event = require('../models/event');
 const User = require('../models/user');
 const mongooseUniqueValidator = require('mongoose-unique-validator');
 
-let EX_EVENTS = [
-  {
-    id:'p1',
-    title:'Basement Theatre',
-    description: 'Here since 2 days, mood to visit a bit the city white other buddies',
-    location:{
-      lat:-36.853539,
-      lng:174.762792,
-  },
-      address:'Lower Greys Avenue,Auckland, New Zealand',
-      creator: 'u1'
-  }
-];
-
 const getEventById = async (req, res, next) => {
-  const eventId = req.params.pid; // { pid: 'p1' }
+  const eventId = req.params.pid; 
 
   let event;
   try {
-    event = await Event.findById(eventId);
+    event = await (await Event.findById(eventId)).populated(creator);
+    //populated allows  to refer to a document stored in another collection in MongoDB and to work with data in that existing document of that other collection to do so
   } catch (err) {
     const error = new HttpError(
       'Something went wrong, could not find an Holidrink.',
@@ -48,15 +36,15 @@ const getEventById = async (req, res, next) => {
   res.json({ event: event.toObject({ getters: true }) }); // => { event } => { event: event }
 };
 
-// function getEventById() { ... }
-// const getEventById = function() { ... }
 
 const getEventsByUserId = async (req, res, next) => {
   const userId = req.params.uid;
 
-  let events;
+ 
+  let userWithEvents;
   try {
-    events = await Event.find({ creator: userId });
+    userWithEvents = await User.findById(userId).populate('events');
+
   } catch (err) {
     const error = new HttpError(
       'Fetching Holidrinks failed, please try again later',
@@ -65,13 +53,13 @@ const getEventsByUserId = async (req, res, next) => {
     return next(error);
   }
 
-  if (!events || events.length === 0) {
+  if (!userWithEvents || userWithEvents.events.length === 0) {
     return next(
       new HttpError('Could not find Holidrinks for the provided user id.', 404)
     );
   }
 
-  res.json({ events: events.map(event => event.toObject({ getters: true })) });
+  res.json({ events: userWithEvents.map(event => event.toObject({ getters: true })) });
 };
 
 const createEvent = async (req, res, next) => {
@@ -113,7 +101,6 @@ const createEvent = async (req, res, next) => {
     user.events.push(createdEvent);
     await user.save({session :sess});
     await sess.commitTransaction();
-
   } catch (err){
     const error = new HttpError(
       'Creating Holidrinks failed,should you try again?',
@@ -185,11 +172,24 @@ const deleteEvent = async (req, res, next) => {
 
   let event;
   try {
-    event = await Event.findById(eventId);
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await event.remove({session: sess});
+    event.creator.events.pull(event);
+    await event.creator.save({session: sess});
+    await sess.commitTransaction();
   } catch (err) {
     const error = new HttpError(
       'Something went wrong, could not delete this Holidrink.',
       500
+    );
+    return next(error);
+  }
+
+  if (!place) {
+    const error = new HttpError(
+      'Could not find place for the provided id.',
+      404
     );
     return next(error);
   }
