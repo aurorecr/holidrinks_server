@@ -51,7 +51,7 @@ const signup = async (req, res, next) => {
   const createdUser = new User({
     name,
     email,
-    image: 'https://i.imgur.com/0p9zSZy.jpg',
+    image,
     password,
     events:[ ]
   });

@@ -1,4 +1,4 @@
-// const uuid = require('uuid/v4');
+// const uuid = require('uuid/v1');
 const { v1: uuidv1 } = require('uuid');
 //uuid package allow to create id
 const { validationResult } = require('express-validator');

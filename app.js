@@ -1,6 +1,8 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
+const fs = require('fs');
+//allow to interact with files and delete them
 
 const eventsRoutes = require('./routes/events-routes');
 const usersRoutes = require('./routes/users-routes');
@@ -32,6 +34,11 @@ app.use((req, res, next) => {
 });
 
 app.use((error, req, res, next) => {
+  if(req.file){
+ fs.unlink(req.file.path, (err) => {
+   console.log(err);
+ });
+  }
   if (res.headerSent) {
     return next(error);
     // this middleware is only reached if we have some request which didn't get a response before and that can only be a request which we don't want to handle
