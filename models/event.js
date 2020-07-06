@@ -12,7 +12,7 @@ const eventSchema = new Schema({
         lat: { type: Number, required: true },
         lng: { type: Number, required: true },
     },
-    creator: { type: mongoose.Types.ObjectId, require: true, ref:'User'}
+    creator: { type: mongoose.Types.ObjectId, required: true, ref: 'User'}
 });
 
 module.exports = mongoose.model('Event', eventSchema);

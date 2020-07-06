@@ -9,7 +9,7 @@ const userSchema = new Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true, minlength: 6 },
     image: { type: String, required: true },
-    events: [{ type: mongoose.Types.ObjectId, require: true, ref:'Event'}]
+    events: [{ type: mongoose.Types.ObjectId, required: true, ref:'Event'}]
     //here with square bracket I say to mongo that we have multiple events
 });
 

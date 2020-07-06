@@ -1,5 +1,6 @@
 const fs = require('fs');
 const { validationResult } = require('express-validator');
+const mongoose = require('mongoose');
 
 const HttpError = require('../models/http-error');
 const getCoordsForAddress = require('../util/location');
@@ -65,7 +66,7 @@ const createEvent = async (req, res, next) => {
     );
   }
 
-  const { title, description, address, creator } = req.body;
+  const { title, description, address } = req.body;
 
   let coordinates;
   try {
@@ -81,12 +82,12 @@ const createEvent = async (req, res, next) => {
     address,
     location: coordinates,
     image: req.file.path,
-    creator
+    creator: req.userData.userId
   });
 
   let user;
   try {
-    user = await User.findById(creator);
+    user = await User.findById(req.userData.userId);
   } catch (err) {
     const error = new HttpError(
       'Creating event failed, please try again.',
@@ -142,6 +143,14 @@ const updateEvent= async (req, res, next) => {
     return next(error);
   }
 
+  if (event.creator.toString() !== req.userData.userId){
+    const error = new HttpError(
+      'Sorry, you are not allowed to edit this Holidrink',
+      401
+      );
+      return next(error);
+  }
+
   event.title = title;
   event.description = description;
 
@@ -176,6 +185,16 @@ const deleteEvent = async (req, res, next) => {
     const error = new HttpError('Could not find Holidrink for this id.', 404);
     return next(error);
   }
+  
+   if(event.creator.id !==req.userData.userId){
+    const error = new HttpError(
+      'Sorry, you are not allowed to delete this Holidrink',
+      401
+      );
+      return next(error);
+  }
+  
+
   const imagePath = event.image;
 
   try {
