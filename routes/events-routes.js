@@ -1,6 +1,8 @@
 const express = require('express');
 const { check } = require('express-validator');
 
+const fileUpload = require ('../middleware/file-upload');
+
 const eventsControllers = require('../controllers/events-controllers');
 
 const router = express.Router();
@@ -11,6 +13,7 @@ router.get('/user/:uid', eventsControllers.getEventsByUserId);
 
 router.post(
   '/',
+  fileUpload.single('image'),
   [
     check('title')
       .not()

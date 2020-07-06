@@ -1,21 +1,17 @@
-// const uuid = require('uuid/v1');
-const { v1: uuidv1 } = require('uuid');
-//uuid package allow to create id
+const fs = require('fs');
 const { validationResult } = require('express-validator');
 
-const mongoose = require('mongoose');
 const HttpError = require('../models/http-error');
 const getCoordsForAddress = require('../util/location');
 const Event = require('../models/event');
 const User = require('../models/user');
-const mongooseUniqueValidator = require('mongoose-unique-validator');
 
 const getEventById = async (req, res, next) => {
   const eventId = req.params.pid; 
 
   let event;
   try {
-    event = await (await Event.findById(eventId)).populated(creator);
+    event = await Event.findById(eventId);
     //populated allows  to refer to a document stored in another collection in MongoDB and to work with data in that existing document of that other collection to do so
   } catch (err) {
     const error = new HttpError(
@@ -33,14 +29,13 @@ const getEventById = async (req, res, next) => {
     return next(error);
   }
 
-  res.json({ event: event.toObject({ getters: true }) }); // => { event } => { event: event }
+  res.json({ event: event.toObject({ getters: true }) }); 
 };
 
 
 const getEventsByUserId = async (req, res, next) => {
   const userId = req.params.uid;
 
- 
   let userWithEvents;
   try {
     userWithEvents = await User.findById(userId).populate('events');
@@ -53,13 +48,13 @@ const getEventsByUserId = async (req, res, next) => {
     return next(error);
   }
 
-  if (!userWithEvents || userWithEvents.events.length === 0) {
+  if (!userWithEvents || userWithEvents.events.length === 0){ 
     return next(
       new HttpError('Could not find Holidrinks for the provided user id.', 404)
     );
   }
 
-  res.json({ events: userWithEvents.map(event => event.toObject({ getters: true })) });
+  res.json({ events: userWithEvents.events.map(event => event.toObject({ getters: true })) });
 };
 
 const createEvent = async (req, res, next) => {
@@ -85,42 +80,38 @@ const createEvent = async (req, res, next) => {
     description,
     address,
     location: coordinates,
-    image:
-      'https://bit.ly/3ikLMau',
+    image: req.file.path,
     creator
   });
 
   let user;
-
   try {
-    const sess = await  mongooseUniqueValidator.startSession();
-    //this is the current session that start when we went to create this new event
-    // using await because it s an asynchronous task
-    sess.startTransaction();
-    await createdEvent.save({session:sess});
-    user.events.push(createdEvent);
-    await user.save({session :sess});
-    await sess.commitTransaction();
-  } catch (err){
+    user = await User.findById(creator);
+  } catch (err) {
     const error = new HttpError(
-      'Creating Holidrinks failed,should you try again?',
+      'Creating event failed, please try again.',
       500
     );
     return next(error);
   }
 
-  console.log(user);
-
-  if (!user){
-    const error = new  HttpError('Could not find user for provided id',404);
-    return next (error)
+  if (!user) {
+    const error = new HttpError('Could not find user for provided id.', 404);
+    return next(error);
   }
 
+  console.log(user);
+
   try {
-    await createdEvent.save();
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await createdEvent.save({ session: sess }); 
+    user.events.push(createdEvent); 
+    await user.save({ session: sess }); 
+    await sess.commitTransaction();
   } catch (err) {
     const error = new HttpError(
-      'Creating Holidrinks failed, please try again.',
+      'Creating holidrink failed, please try again.',
       500
     );
     return next(error);
@@ -129,7 +120,7 @@ const createEvent = async (req, res, next) => {
   res.status(201).json({ event: createdEvent });
 };
 
-const updateEvent = async (req, res, next) => {
+const updateEvent= async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return next(
@@ -145,7 +136,7 @@ const updateEvent = async (req, res, next) => {
     event = await Event.findById(eventId);
   } catch (err) {
     const error = new HttpError(
-      'Something went wrong, could not update this Holidrink.',
+      'Something went wrong, could not update Holidrink.',
       500
     );
     return next(error);
@@ -158,7 +149,7 @@ const updateEvent = async (req, res, next) => {
     await event.save();
   } catch (err) {
     const error = new HttpError(
-      'Something went wrong, could not update this holidrink.',
+      'Something went wrong, could not update Holidrink.',
       500
     );
     return next(error);
@@ -172,6 +163,22 @@ const deleteEvent = async (req, res, next) => {
 
   let event;
   try {
+    event = await Event.findById(eventId).populate('creator');
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, could not delete Holidrink.',
+      500
+    );
+    return next(error);
+  }
+
+  if (!event) {
+    const error = new HttpError('Could not find Holidrink for this id.', 404);
+    return next(error);
+  }
+  const imagePath = event.image;
+
+  try {
     const sess = await mongoose.startSession();
     sess.startTransaction();
     await event.remove({session: sess});
@@ -180,29 +187,15 @@ const deleteEvent = async (req, res, next) => {
     await sess.commitTransaction();
   } catch (err) {
     const error = new HttpError(
-      'Something went wrong, could not delete this Holidrink.',
+      'Something went wrong, could not delete holidrink.',
       500
     );
     return next(error);
   }
 
-  if (!place) {
-    const error = new HttpError(
-      'Could not find place for the provided id.',
-      404
-    );
-    return next(error);
-  }
-
-  try {
-    await event.remove();
-  } catch (err) {
-    const error = new HttpError(
-      'Something went wrong, could not delete this Holidrink.',
-      500
-    );
-    return next(error);
-  }
+  fs.unlink(imagePath, err => {
+    console.log(err);
+  });
 
   res.status(200).json({ message: 'Deleted Holidrink.' });
 };

@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const fs = require('fs');
 //allow to interact with files and delete them
+const path = require('path');
 
 const eventsRoutes = require('./routes/events-routes');
 const usersRoutes = require('./routes/users-routes');
@@ -11,6 +12,7 @@ const HttpError = require('./models/http-error');
 const app = express();
 
 app.use(bodyParser.json());
+app.use('/uploads/images', express.static(path.join('uploads', 'images')));
 
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
