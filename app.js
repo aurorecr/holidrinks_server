@@ -27,18 +27,18 @@ app.use((req, res, next) => {
 
 app.use('/api/events', eventsRoutes); // => /api/events...
 app.use('/api/users', usersRoutes);
-/*
+
 app.use((req, res, next) => {
   //Express will apply his is a middleware function on every incoming request
 
   const error = new HttpError('Could not find this route.', 404);
   throw error;
 });
-*/
+/*
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname + 'build/index.html'))
 })
-
+*/
 app.use((error, req, res, next) => {
   if(req.file){
  fs.unlink(req.file.path, (err) => {
