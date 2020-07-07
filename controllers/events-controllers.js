@@ -104,6 +104,7 @@ const createEvent = async (req, res, next) => {
   console.log(user);
 
   try {
+    await Event.createCollection()
     const sess = await mongoose.startSession();
     sess.startTransaction();
     await createdEvent.save({ session: sess }); 
@@ -111,6 +112,8 @@ const createEvent = async (req, res, next) => {
     await user.save({ session: sess }); 
     await sess.commitTransaction();
   } catch (err) {
+    console.error(err)
+    console.log('Error while creating holdrink!', err.message)
     const error = new HttpError(
       'Creating holidrink failed, please try again.',
       500
